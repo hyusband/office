@@ -71,9 +71,9 @@ export class DiscordService {
                 embeds: [
                     {
                         title: `${emojiMap[state.status] || '🔔'} Status: ${state.status.toUpperCase()}`,
-                        description: state.activity
-                            ? `Currently: **${state.activity}**`
-                            : `I am now **${state.status}**.`,
+                        description: state.metadata?.aiSummary 
+                            ? `✨ **AI Summary**: ${state.metadata.aiSummary}`
+                            : (state.activity ? `Currently: **${state.activity}**` : `I am now **${state.status}**.`),
                         fields: fields.length > 0 ? fields : undefined,
                         color: colorMap[state.status] || 0x34495e,
                         timestamp: new Date(state.timestamp).toISOString(),

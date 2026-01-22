@@ -3,6 +3,7 @@ import { StatusUpdateRequest } from '../../shared/types.js';
 import { DiscordService } from '../services/discord.js';
 import { dbService } from '../services/database.js';
 import { botService } from '../services/bot.js';
+import { aiService } from '../services/ai.js';
 
 export default async function statusRoutes(fastify: FastifyInstance) {
 
@@ -17,6 +18,13 @@ export default async function statusRoutes(fastify: FastifyInstance) {
         const webhookUrl = config?.webhookUrl || process.env.DISCORD_WEBHOOK_URL;
 
         await dbService.saveStatus(userId, state);
+
+        if (state.status === 'coding' || state.status === 'busy') {
+            const aiSummary = await aiService.generateCreativeStatus(state.activity || state.status, state.metadata);
+            if (aiSummary) {
+                state.metadata = { ...state.metadata, aiSummary };
+            }
+        }
 
         botService.updateUserState(userId, state);
 

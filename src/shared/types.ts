@@ -20,6 +20,7 @@ export interface AvailabilityState {
         cpuLoad?: number;
         isAudioPlaying?: boolean;
         kpm?: number;
+        aiSummary?: string;
     };
 }
 
