@@ -1,0 +1,30 @@
+{
+    "name": "office",
+    "version": "1.0.0",
+    "description": "Dynamic developer availability API + Agent",
+    "main": "index.js",
+    "scripts": {
+        "server:dev": "tsx watch src/server/index.ts",
+        "agent:dev": "tsx watch src/agent/index.ts",
+        "build": "tsc"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "fastify": "^4.24.3",
+        "fastify-plugin": "^4.5.1",
+        "@fastify/env": "^4.2.0",
+        "@fastify/cors": "^8.4.1",
+        "discord.js": "^14.13.0",
+        "axios": "^1.6.2",
+        "commander": "^11.1.0",
+        "ps-list": "^8.1.1",
+        "dotenv": "^16.3.1"
+    },
+    "devDependencies": {
+        "typescript": "^5.2.2",
+        "@types/node": "^20.8.10",
+        "tsx": "^4.1.0"
+    }
+}
