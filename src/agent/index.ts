@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import axios from 'axios';
 import { checkActivity } from './monitors/activity.js';
+import { setupCommands } from './cli/commands.js';
 import { AvailabilityState, StatusType } from '../shared/types.js';
 import * as dotenv from 'dotenv';
 
@@ -19,37 +20,30 @@ program
     .description('Local agent for Real Availability API')
     .version('1.0.0');
 
-program
-    .command('set')
-    .argument('<status>', 'Status to set (available, busy, meeting, away, coding)')
-    .argument('[activity]', 'Optional activity description')
-    .action(async (status: string, activity?: string) => {
-        manualOverride = {
-            status: status as StatusType,
-            activity: activity || 'Manual Status',
-            timestamp: Date.now()
-        };
-        console.log(`[Agent] Manual override set: ${status}`);
-        await syncWithServer(manualOverride);
-    });
-
-program
-    .command('clear')
-    .action(async () => {
+setupCommands(
+    program,
+    async (state) => {
+        manualOverride = state;
+        console.log(`[Agent] Manual override: ${state.status}`);
+        await syncWithServer(state);
+    },
+    async () => {
         manualOverride = null;
-        console.log('[Agent] Manual override cleared. Returning to auto-detection.');
+        console.log('[Agent] Manual override cleared.');
         const autoState = await getAutoState();
         await syncWithServer(autoState);
-    });
+    }
+);
 
 program.action(async () => {
-    console.log('[Agent] Starting Real Availability Monitor...');
-    console.log(`[Agent] Reporting to: ${API_URL}`);
+    if (program.args.length > 0) return;
+
+    console.log('--- Real Availability Agent ---');
+    console.log(`User: ${USER_ID} | API: ${API_URL}\n`);
 
     setInterval(async () => {
         try {
             const state = manualOverride || await getAutoState();
-
             if (state.status !== lastSentState || manualOverride) {
                 await syncWithServer(state);
             }
@@ -61,22 +55,16 @@ program.action(async () => {
 
 async function getAutoState(): Promise<AvailabilityState> {
     const detail = await checkActivity();
-    return {
-        ...detail,
-        timestamp: Date.now()
-    };
+    return { ...detail, timestamp: Date.now() };
 }
 
 async function syncWithServer(state: AvailabilityState) {
     try {
-        await axios.post(`${API_URL}/status`, {
-            state,
-            userId: USER_ID
-        });
+        await axios.post(`${API_URL}/status`, { state, userId: USER_ID });
         lastSentState = state.status;
-        console.log(`[Agent] Synced: ${state.status} ${state.activity ? `(${state.activity})` : ''}`);
+        console.log(`[${new Date().toLocaleTimeString()}] Status: ${state.status}`);
     } catch (err) {
-        console.error('[Agent] Sync failed:', (err as any).response?.data || (err as Error).message);
+        console.error('[Agent] Sync failed');
     }
 }
 
