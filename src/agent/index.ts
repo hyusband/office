@@ -6,6 +6,8 @@ import { TrayService } from './services/tray.js';
 import logger from './services/logger.js';
 import { checkForUpdates } from './services/updater.js';
 import { rpcService } from './services/rpc.js';
+import { automationService } from './services/automation.js';
+import { obsService } from './services/obs.js';
 import { AvailabilityState, StatusType } from '../shared/types.js';
 import * as dotenv from 'dotenv';
 import notifier from 'node-notifier';
@@ -60,6 +62,7 @@ program.action(async () => {
             const state = manualOverride || await getAutoState();
 
             handleHealthReminders(state);
+            await handleAutomation(state);
 
             if (state.status !== lastSentState) {
                 trayService.notify(state.status, state.activity);
@@ -83,7 +86,7 @@ async function getAutoState(): Promise<AvailabilityState> {
 function handleHealthReminders(state: AvailabilityState) {
     const now = Date.now();
 
-    if (state.status === 'coding' || state.status === 'busy') {
+    if (state.status === 'coding' || state.status === 'busy' || state.status === 'deep_focus') {
         if (!focusStartTime) focusStartTime = now;
 
         const focusMinutes = (now - focusStartTime) / 60000;
@@ -99,6 +102,26 @@ function handleHealthReminders(state: AvailabilityState) {
         }
     } else {
         focusStartTime = null;
+    }
+}
+
+async function handleAutomation(state: AvailabilityState) {
+    // Distraction Blocker
+    if (state.status === 'deep_focus' || state.status === 'meeting') {
+        await automationService.blockDistractors();
+    } else if (lastSentState === 'deep_focus' || lastSentState === 'meeting') {
+        if (state.status === 'available' || state.status === 'coding') {
+            await automationService.unblockDistractors();
+        }
+    }
+
+    // OBS Sync
+    if (state.status === 'away') {
+        await obsService.setScene('BRB / Vuelvo pronto');
+    } else if (state.status === 'coding' || state.status === 'deep_focus' || state.status === 'available') {
+        if (lastSentState === 'away') {
+            await obsService.setScene('Escena Principal');
+        }
     }
 }
 

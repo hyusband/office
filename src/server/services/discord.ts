@@ -16,7 +16,8 @@ export class DiscordService {
             busy: 0xe74c3c,
             meeting: 0x9b59b6,
             away: 0xf1c40f,
-            coding: 0x3498db
+            coding: 0x3498db,
+            deep_focus: 0x1f1f1f
         };
 
         const emojiMap: Record<string, string> = {
@@ -24,7 +25,8 @@ export class DiscordService {
             busy: '⛔',
             meeting: '🎧',
             away: '🌙',
-            coding: '💻'
+            coding: '💻',
+            deep_focus: '🧠'
         };
 
         const fields = [];

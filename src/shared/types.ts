@@ -1,4 +1,4 @@
-export type StatusType = 'available' | 'busy' | 'meeting' | 'away' | 'coding' | 'offline';
+export type StatusType = 'available' | 'busy' | 'meeting' | 'away' | 'coding' | 'offline' | 'deep_focus';
 
 export interface AvailabilityState {
     status: StatusType;

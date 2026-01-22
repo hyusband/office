@@ -10,6 +10,7 @@ import { getVSCodeWorkspace } from './workspace.js';
 import { getHardwareInfo } from './hardware.js';
 import { isAudioPlaying } from './audio.js';
 import { getActiveBrowserInfo } from './browser.js';
+import { focusTracker } from '../services/focus.js';
 
 export interface ActivityDetail {
     status: StatusType;
@@ -74,6 +75,9 @@ export async function checkActivity(): Promise<ActivityDetail> {
     const isTeams = processes.some(p => p.name.toLowerCase().includes('teams'));
     const isCoding = processes.some(p => p.name.toLowerCase().includes('code'));
 
+    if (isCoding) focusTracker.recordSwitch('VS Code');
+    if (browser) focusTracker.recordSwitch(browser.title);
+
     const branch = isCoding ? getGitBranch() : undefined;
     const workspace = isCoding ? getVSCodeWorkspace() : undefined;
     const music = getSpotifyMusic();
@@ -104,6 +108,16 @@ export async function checkActivity(): Promise<ActivityDetail> {
     }
 
     if (isCoding) {
+        const focusLevel = focusTracker.getFocusLevel();
+
+        if (focusLevel === 'deep') {
+            return {
+                status: 'deep_focus',
+                activity: `Deep Focus: ${workspace || 'Coding'}`,
+                metadata: { ...commonMeta, branch, workspace }
+            };
+        }
+
         if (browser?.category === 'research') {
             return {
                 status: 'coding',
