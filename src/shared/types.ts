@@ -19,6 +19,7 @@ export interface AvailabilityState {
         isCharging?: boolean;
         cpuLoad?: number;
         isAudioPlaying?: boolean;
+        kpm?: number;
     };
 }
 
