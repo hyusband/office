@@ -9,6 +9,7 @@ import { getWakaTimeActivity } from './wakatime.js';
 import { getVSCodeWorkspace } from './workspace.js';
 import { getHardwareInfo } from './hardware.js';
 import { isAudioPlaying } from './audio.js';
+import { getActiveBrowserInfo } from './browser.js';
 
 export interface ActivityDetail {
     status: StatusType;
@@ -27,14 +28,30 @@ export interface ActivityDetail {
         isCharging?: boolean;
         cpuLoad?: number;
         isAudioPlaying?: boolean;
+        browserTitle?: string;
+        browserCategory?: string;
     };
 }
 
 export async function checkActivity(): Promise<ActivityDetail> {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+
+    // 4. Status Scheduling: Offline after 10 PM or on early Weekends
+    if (currentHour >= 22 || currentHour < 7 || (isWeekend && currentHour < 10)) {
+        return {
+            status: 'offline',
+            activity: isWeekend ? 'Enjoying the Weekend 🌴' : 'Resting (Scheduled DND 🌙)',
+            metadata: { localTime: now.toLocaleTimeString() }
+        };
+    }
+
     const idleMinutes = getIdleMinutes();
     const cameraInUse = isCameraInUse();
     const audioPlaying = isAudioPlaying();
     const hardware = getHardwareInfo();
+    const browser = getActiveBrowserInfo();
 
     if (cameraInUse) {
         return {
@@ -64,7 +81,7 @@ export async function checkActivity(): Promise<ActivityDetail> {
     const wakatime = await getWakaTimeActivity(process.env.WAKATIME_API_KEY);
 
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const localTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const commonMeta = {
         music,
@@ -73,6 +90,8 @@ export async function checkActivity(): Promise<ActivityDetail> {
         localTime,
         wakatime,
         isAudioPlaying: audioPlaying,
+        browserTitle: browser?.title,
+        browserCategory: browser?.category,
         ...hardware
     };
 
@@ -85,11 +104,36 @@ export async function checkActivity(): Promise<ActivityDetail> {
     }
 
     if (isCoding) {
+        if (browser?.category === 'research') {
+            return {
+                status: 'coding',
+                activity: `Researching: ${browser.title}`,
+                metadata: { ...commonMeta, branch, workspace }
+            };
+        }
+
         return {
             status: 'coding',
             activity: `Coding${workspace ? ` on ${workspace}` : ''}`,
             metadata: { ...commonMeta, branch, workspace }
         };
+    }
+
+    if (browser) {
+        if (browser.category === 'video') {
+            return {
+                status: 'away',
+                activity: `Watching: ${browser.title}`,
+                metadata: { ...commonMeta }
+            };
+        }
+        if (browser.category === 'design') {
+            return {
+                status: 'busy',
+                activity: `Designing: ${browser.title}`,
+                metadata: { ...commonMeta }
+            };
+        }
     }
 
     if (hardware.cpuLoad && hardware.cpuLoad > 80) {
