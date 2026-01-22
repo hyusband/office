@@ -45,6 +45,12 @@ export class BotService {
     updateUserState(userId: string, state: AvailabilityState) {
         this.userStates[userId] = state;
     }
+
+    getAvailableUsers() {
+        return Object.entries(this.userStates)
+            .filter(([_, state]) => state.status === 'available' || state.status === 'coding')
+            .map(([userId, state]) => ({ userId, status: state.status, activity: state.activity }));
+    }
 }
 
 export const botService = new BotService();

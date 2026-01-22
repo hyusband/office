@@ -41,4 +41,15 @@ export default async function statusRoutes(fastify: FastifyInstance) {
         await dbService.setUserConfig(userId, webhookUrl, discordToken);
         return { success: true };
     });
+
+    fastify.get('/analytics/heatmap/:userId', async (request, reply) => {
+        const { userId } = request.params as { userId: string };
+        const data = await dbService.getHeatmapData(userId);
+        return data;
+    });
+
+    fastify.get('/status/free', async (request, reply) => {
+        const users = botService.getAvailableUsers();
+        return users;
+    });
 }

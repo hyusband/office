@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3';
 import { AvailabilityState } from '../../shared/types.js';
-import path from 'path';
 
 const db = new Database('data.db');
 
@@ -59,6 +58,19 @@ export class DbService {
 
     async setUserConfig(userId: string, webhookUrl: string, discordToken?: string) {
         db.prepare('INSERT OR REPLACE INTO user_configs (userId, webhookUrl, discordToken) VALUES (?, ?, ?)').run(userId, webhookUrl, discordToken || null);
+    }
+
+    async getHeatmapData(userId: string) {
+        return db.prepare(`
+            SELECT 
+                date(startTime / 1000, 'unixepoch') as day,
+                SUM(CASE WHEN endTime IS NOT NULL THEN endTime - startTime ELSE ? - startTime END) / 60000 as focusMinutes
+            FROM status_history
+            WHERE userId = ? AND status IN ('coding', 'busy', 'meeting')
+            GROUP BY day
+            ORDER BY day DESC
+            LIMIT 365
+        `).all(Date.now(), userId);
     }
 }
 
