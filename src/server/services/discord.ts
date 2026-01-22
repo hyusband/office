@@ -30,15 +30,27 @@ export class DiscordService {
         const fields = [];
 
         if (state.metadata?.branch) {
-            fields.push({ name: '🌿 Git Branch', value: `\`${state.metadata.branch}\``, inline: true });
+            fields.push({ name: '🌿 Branch', value: `\`${state.metadata.branch}\``, inline: true });
+        }
+
+        if (state.metadata?.wakatime) {
+            fields.push({ name: '🚀 WakaTime', value: state.metadata.wakatime, inline: true });
+        }
+
+        if (state.metadata?.githubNotifications) {
+            fields.push({ name: '🔔 GitHub', value: `${state.metadata.githubNotifications} issues/PRs`, inline: true });
         }
 
         if (state.metadata?.music) {
             fields.push({ name: '🎵 Listening to', value: state.metadata.music, inline: true });
         }
 
+        if (state.metadata?.localTime) {
+            fields.push({ name: '🕒 My Time', value: `${state.metadata.localTime} (${state.metadata.timezone || 'UTC'})`, inline: true });
+        }
+
         if (state.status === 'away' && state.metadata?.idleMinutes) {
-            fields.push({ name: '⏳ Idle for', value: `${state.metadata.idleMinutes} minutes`, inline: true });
+            fields.push({ name: '⏳ Idle', value: `${state.metadata.idleMinutes}m`, inline: true });
         }
 
         try {

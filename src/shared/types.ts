@@ -9,6 +9,11 @@ export interface AvailabilityState {
         branch?: string;
         music?: string;
         idleMinutes?: number;
+        timezone?: string;
+        localTime?: string;
+        githubNotifications?: number;
+        wakatime?: string;
+        cameraInUse?: boolean;
     };
 }
 

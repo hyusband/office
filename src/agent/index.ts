@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import axios from 'axios';
 import { checkActivity } from './monitors/activity.js';
 import { setupCommands } from './cli/commands.js';
+import { TrayService } from './services/tray.js';
 import { AvailabilityState, StatusType } from '../shared/types.js';
 import * as dotenv from 'dotenv';
 
@@ -12,6 +13,8 @@ const USER_ID = process.env.USER_ID || 'dev-user';
 
 let manualOverride: AvailabilityState | null = null;
 let lastSentState: StatusType | null = null;
+
+const trayService = new TrayService(() => process.exit(0));
 
 const program = new Command();
 
@@ -25,6 +28,7 @@ setupCommands(
     async (state) => {
         manualOverride = state;
         console.log(`[Agent] Manual override: ${state.status}`);
+        trayService.notify(state.status, state.activity);
         await syncWithServer(state);
     },
     async () => {
