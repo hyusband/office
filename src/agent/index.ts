@@ -3,6 +3,8 @@ import axios from 'axios';
 import { checkActivity } from './monitors/activity.js';
 import { setupCommands } from './cli/commands.js';
 import { TrayService } from './services/tray.js';
+import logger from './services/logger.js';
+import { checkForUpdates } from './services/updater.js';
 import { AvailabilityState, StatusType } from '../shared/types.js';
 import * as dotenv from 'dotenv';
 
@@ -42,17 +44,22 @@ setupCommands(
 program.action(async () => {
     if (program.args.length > 0) return;
 
+    await checkForUpdates();
+
     console.log('--- Real Availability Agent ---');
     console.log(`User: ${USER_ID} | API: ${API_URL}\n`);
 
     setInterval(async () => {
         try {
             const state = manualOverride || await getAutoState();
-            if (state.status !== lastSentState || manualOverride) {
+            if (state.status !== lastSentState) {
+                trayService.notify(state.status, state.activity);
+                await syncWithServer(state);
+            } else if (manualOverride) {
                 await syncWithServer(state);
             }
         } catch (err) {
-            console.error('[Agent] Loop error:', (err as Error).message);
+            logger.error('[Agent] Loop error', { error: (err as Error).message });
         }
     }, 10000);
 });
@@ -66,9 +73,9 @@ async function syncWithServer(state: AvailabilityState) {
     try {
         await axios.post(`${API_URL}/status`, { state, userId: USER_ID });
         lastSentState = state.status;
-        console.log(`[${new Date().toLocaleTimeString()}] Status: ${state.status}`);
+        logger.info(`Synced: ${state.status}`);
     } catch (err) {
-        console.error('[Agent] Sync failed');
+        logger.error('[Agent] Sync failed', { error: (err as any).response?.data || (err as Error).message });
     }
 }
 
