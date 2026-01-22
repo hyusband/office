@@ -9,17 +9,14 @@ export class DiscordService {
     }
 
     async notifyStatusChange(state: AvailabilityState) {
-        if (!this.webhookUrl) {
-            console.log('[Discord] No Webhook URL configured, skipping notification.');
-            return;
-        }
+        if (!this.webhookUrl) return;
 
         const colorMap: Record<string, number> = {
             available: 0x27ae60,
             busy: 0xe74c3c,
             meeting: 0x9b59b6,
-            away: 0xf1c40f, 
-            coding: 0x3498db 
+            away: 0xf1c40f,
+            coding: 0x3498db
         };
 
         const emojiMap: Record<string, string> = {
@@ -30,14 +27,29 @@ export class DiscordService {
             coding: '💻'
         };
 
+        const fields = [];
+
+        if (state.metadata?.branch) {
+            fields.push({ name: '🌿 Git Branch', value: `\`${state.metadata.branch}\``, inline: true });
+        }
+
+        if (state.metadata?.music) {
+            fields.push({ name: '🎵 Listening to', value: state.metadata.music, inline: true });
+        }
+
+        if (state.status === 'away' && state.metadata?.idleMinutes) {
+            fields.push({ name: '⏳ Idle for', value: `${state.metadata.idleMinutes} minutes`, inline: true });
+        }
+
         try {
             await axios.post(this.webhookUrl, {
                 embeds: [
                     {
-                        title: `${emojiMap[state.status] || '🔔'} Status Updated: ${state.status.toUpperCase()}`,
+                        title: `${emojiMap[state.status] || '🔔'} Status: ${state.status.toUpperCase()}`,
                         description: state.activity
-                            ? `Currently: **${state.activity}**\n${state.detail || ''}`
+                            ? `Currently: **${state.activity}**`
                             : `I am now **${state.status}**.`,
+                        fields: fields.length > 0 ? fields : undefined,
                         color: colorMap[state.status] || 0x34495e,
                         timestamp: new Date(state.timestamp).toISOString(),
                         footer: {
@@ -46,9 +58,8 @@ export class DiscordService {
                     }
                 ]
             });
-            console.log(`[Discord] Webhook sent for status: ${state.status}`);
         } catch (error) {
-            console.error('[Discord] Failed to send webhook:', error);
+            console.error('[Discord] Webhook error');
         }
     }
 }

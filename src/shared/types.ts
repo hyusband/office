@@ -5,6 +5,11 @@ export interface AvailabilityState {
     activity?: string;
     detail?: string;
     timestamp: number;
+    metadata?: {
+        branch?: string;
+        music?: string;
+        idleMinutes?: number;
+    };
 }
 
 export interface StatusUpdateRequest {
