@@ -29,8 +29,21 @@ export class DiscordService {
 
         const fields = [];
 
+        if (state.metadata?.workspace) {
+            fields.push({ name: '📂 Workspace', value: `\`${state.metadata.workspace}\``, inline: true });
+        }
+
         if (state.metadata?.branch) {
             fields.push({ name: '🌿 Branch', value: `\`${state.metadata.branch}\``, inline: true });
+        }
+
+        if (state.metadata?.battery !== undefined) {
+            const batteryIcon = state.metadata.isCharging ? '⚡' : '🔋';
+            fields.push({ name: `${batteryIcon} Battery`, value: `${state.metadata.battery}%`, inline: true });
+        }
+
+        if (state.metadata?.cpuLoad !== undefined) {
+            fields.push({ name: '⚙️ CPU Load', value: `${state.metadata.cpuLoad}%`, inline: true });
         }
 
         if (state.metadata?.wakatime) {

@@ -14,6 +14,11 @@ export interface AvailabilityState {
         githubNotifications?: number;
         wakatime?: string;
         cameraInUse?: boolean;
+        workspace?: string;
+        battery?: number;
+        isCharging?: boolean;
+        cpuLoad?: number;
+        isAudioPlaying?: boolean;
     };
 }
 

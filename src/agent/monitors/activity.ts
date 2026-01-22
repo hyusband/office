@@ -6,6 +6,9 @@ import { getSpotifyMusic } from './spotify.js';
 import { isCameraInUse } from './camera.js';
 import { getGithubNotifications } from './github.js';
 import { getWakaTimeActivity } from './wakatime.js';
+import { getVSCodeWorkspace } from './workspace.js';
+import { getHardwareInfo } from './hardware.js';
+import { isAudioPlaying } from './audio.js';
 
 export interface ActivityDetail {
     status: StatusType;
@@ -19,26 +22,33 @@ export interface ActivityDetail {
         githubNotifications?: number;
         wakatime?: string;
         cameraInUse?: boolean;
+        workspace?: string;
+        battery?: number;
+        isCharging?: boolean;
+        cpuLoad?: number;
+        isAudioPlaying?: boolean;
     };
 }
 
 export async function checkActivity(): Promise<ActivityDetail> {
     const idleMinutes = getIdleMinutes();
     const cameraInUse = isCameraInUse();
+    const audioPlaying = isAudioPlaying();
+    const hardware = getHardwareInfo();
 
     if (cameraInUse) {
         return {
             status: 'meeting',
             activity: 'In a Call (Camera detected)',
-            metadata: { cameraInUse }
+            metadata: { cameraInUse, ...hardware }
         };
     }
 
-    if (idleMinutes >= 5) {
+    if (idleMinutes >= 5 && !audioPlaying) {
         return {
             status: 'away',
             activity: 'Away from Keyboard',
-            metadata: { idleMinutes }
+            metadata: { idleMinutes, ...hardware }
         };
     }
 
@@ -48,6 +58,7 @@ export async function checkActivity(): Promise<ActivityDetail> {
     const isCoding = processes.some(p => p.name.toLowerCase().includes('code'));
 
     const branch = isCoding ? getGitBranch() : undefined;
+    const workspace = isCoding ? getVSCodeWorkspace() : undefined;
     const music = getSpotifyMusic();
     const githubNotifications = await getGithubNotifications(process.env.GITHUB_TOKEN);
     const wakatime = await getWakaTimeActivity(process.env.WAKATIME_API_KEY);
@@ -55,24 +66,42 @@ export async function checkActivity(): Promise<ActivityDetail> {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const localTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    const commonMeta = {
+        music,
+        githubNotifications,
+        timezone,
+        localTime,
+        wakatime,
+        isAudioPlaying: audioPlaying,
+        ...hardware
+    };
+
     if (isZooming || isTeams) {
         return {
             status: 'meeting',
             activity: isZooming ? 'In a Zoom Call' : 'In a Teams Meeting',
-            metadata: { music, githubNotifications, timezone, localTime, wakatime }
+            metadata: { ...commonMeta }
         };
     }
 
     if (isCoding) {
         return {
             status: 'coding',
-            activity: 'Writing Code in VS Code',
-            metadata: { branch, music, githubNotifications, timezone, localTime, wakatime }
+            activity: `Coding${workspace ? ` on ${workspace}` : ''}`,
+            metadata: { ...commonMeta, branch, workspace }
+        };
+    }
+
+    if (hardware.cpuLoad && hardware.cpuLoad > 80) {
+        return {
+            status: 'busy',
+            activity: `High Load: ${hardware.cpuLoad}% CPU`,
+            metadata: { ...commonMeta }
         };
     }
 
     return {
         status: 'available',
-        metadata: { music, githubNotifications, timezone, localTime, wakatime }
+        metadata: { ...commonMeta }
     };
 }
