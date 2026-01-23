@@ -17,7 +17,8 @@ db.exec(`
         activity TEXT,
         startTime INTEGER,
         endTime INTEGER,
-        metadata TEXT
+        metadata TEXT,
+        context TEXT
     );
 `);
 
@@ -61,16 +62,27 @@ export class DbService {
     }
 
     async getHeatmapData(userId: string) {
+        // Aggregates focus time (coding, busy, meeting, deep_focus) by date
         return db.prepare(`
             SELECT 
                 date(startTime / 1000, 'unixepoch') as day,
                 SUM(CASE WHEN endTime IS NOT NULL THEN endTime - startTime ELSE ? - startTime END) / 60000 as focusMinutes
             FROM status_history
-            WHERE userId = ? AND status IN ('coding', 'busy', 'meeting')
+            WHERE userId = ? AND status IN ('coding', 'busy', 'meeting', 'deep_focus')
             GROUP BY day
             ORDER BY day DESC
             LIMIT 365
         `).all(Date.now(), userId);
+    }
+
+    async getDailyActivity(userId: string, date: string) {
+        // date format: 'YYYY-MM-DD'
+        return db.prepare(`
+            SELECT status, activity, startTime, endTime, metadata, context
+            FROM status_history
+            WHERE userId = ? AND date(startTime / 1000, 'unixepoch') = ?
+            ORDER BY startTime ASC
+        `).all(userId, date);
     }
 }
 

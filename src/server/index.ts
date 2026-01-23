@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import configPlugin from './plugins/config.js';
 import statusRoutes from './routes/status.js';
 import { botService } from './services/bot.js';
+import { reporterService } from './services/reporter.js';
 
 const fastify = Fastify({
     logger: {
@@ -27,6 +28,8 @@ const start = async () => {
         if (process.env.DISCORD_BOT_TOKEN) {
             await botService.start(process.env.DISCORD_BOT_TOKEN);
         }
+
+        reporterService.start();
 
         console.log(`\n🚀 Server ready at http://localhost:${port}`);
     } catch (err) {

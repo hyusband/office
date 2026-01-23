@@ -51,6 +51,24 @@ export class BotService {
             .filter(([_, state]) => state.status === 'available' || state.status === 'coding')
             .map(([userId, state]) => ({ userId, status: state.status, activity: state.activity }));
     }
+
+    async sendPrivateReport(userId: string, content: string) {
+        try {
+            const logChannelId = process.env.DISCORD_LOG_CHANNEL_ID;
+            if (logChannelId) {
+                const channel = await this.client.channels.fetch(logChannelId);
+                if (channel?.isTextBased()) {
+                    await (channel as any).send({
+                        content: `📊 **Daily Standup Report for ${userId}**\n\n${content}`
+                    });
+                }
+            } else {
+                console.log(`[Bot] Report for ${userId}: ${content}`);
+            }
+        } catch (err) {
+            console.error('[Bot] Failed to send report', (err as Error).message);
+        }
+    }
 }
 
 export const botService = new BotService();
