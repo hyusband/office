@@ -3,26 +3,53 @@ import { AvailabilityState } from '../../shared/types.js';
 
 const db = new Database('data.db');
 
-db.exec(`
-    CREATE TABLE IF NOT EXISTS user_configs (
-        userId TEXT PRIMARY KEY,
-        webhookUrl TEXT,
-        discordToken TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS status_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId TEXT,
-        status TEXT,
-        activity TEXT,
-        startTime INTEGER,
-        endTime INTEGER,
-        metadata TEXT,
-        context TEXT
-    );
-`);
-
 export class DbService {
+    constructor() {
+        this.init();
+    }
+
+    private init() {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS migrations (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS user_configs (
+                userId TEXT PRIMARY KEY,
+                webhookUrl TEXT,
+                discordToken TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS status_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                userId TEXT,
+                status TEXT,
+                activity TEXT,
+                startTime INTEGER,
+                endTime INTEGER,
+                metadata TEXT,
+                context TEXT
+            );
+        `);
+
+        this.runMigrations();
+    }
+
+    private runMigrations() {
+        const migrations = [
+            { id: 1, name: 'Initial Schema' },
+        ];
+
+        for (const m of migrations) {
+            const alreadyApplied = db.prepare('SELECT id FROM migrations WHERE id = ?').get(m.id);
+            if (!alreadyApplied) {
+                console.log(`[DB] Applying migration ${m.id}: ${m.name}`);
+                db.prepare('INSERT INTO migrations (id, name) VALUES (?, ?)').run(m.id, m.name);
+            }
+        }
+    }
     async saveStatus(userId: string, state: AvailabilityState) {
         const lastStatus = db.prepare('SELECT id FROM status_history WHERE userId = ? AND endTime IS NULL ORDER BY startTime DESC LIMIT 1').get(userId) as { id: number } | undefined;
 

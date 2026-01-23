@@ -10,7 +10,9 @@ import { automationService } from './services/automation.js';
 import { obsService } from './services/obs.js';
 import { AvailabilityState, StatusType } from '../shared/types.js';
 import * as dotenv from 'dotenv';
-import notifier from 'node-notifier';
+import { notifierService } from './services/notifier.js';
+import { queueService } from './services/queue.js';
+import { withPerformance } from '../shared/utils/perf.js';
 
 dotenv.config();
 
@@ -22,7 +24,7 @@ let lastSentState: StatusType | null = null;
 let focusStartTime: number | null = null;
 let lastReminderTime: number = 0;
 
-const trayService = new TrayService(() => process.exit(0));
+const trayService = new TrayService(() => gracefulShutdown());
 
 const program = new Command();
 
@@ -59,7 +61,7 @@ program.action(async () => {
 
     setInterval(async () => {
         try {
-            const state = manualOverride || await getAutoState();
+            const state = manualOverride || await withPerformance('CheckActivity', getAutoState);
 
             handleHealthReminders(state);
             await handleAutomation(state);
@@ -92,13 +94,8 @@ function handleHealthReminders(state: AvailabilityState) {
         const focusMinutes = (now - focusStartTime) / 60000;
 
         if (focusMinutes >= 60 && (now - lastReminderTime) > 60000 * 60) {
-            notifier.notify({
-                title: 'Real Availability: Health Break 💧',
-                message: `Llevas ${Math.round(focusMinutes)} min dándole duro. Ve a beber agua y estira un poco.`,
-                sound: true
-            });
+            notifierService.breakReminder(focusMinutes);
             lastReminderTime = now;
-            logger.info('[Health] Break reminder sent');
         }
     } else {
         focusStartTime = null;
@@ -137,13 +134,26 @@ async function updateLocalRPC(state: AvailabilityState) {
 }
 
 async function syncWithServer(state: AvailabilityState) {
-    try {
-        await axios.post(`${API_URL}/status`, { state, userId: USER_ID });
-        lastSentState = state.status;
-        logger.info(`Synced: ${state.status}`);
-    } catch (err) {
-        logger.error('[Agent] Sync failed', { error: (err as any).response?.data || (err as Error).message });
-    }
+    await queueService.enqueue(USER_ID, state, API_URL);
+    lastSentState = state.status;
 }
+
+async function gracefulShutdown() {
+    logger.info('[Agent] Initiating graceful shutdown...');
+    notifierService.shutdown();
+
+    // Optional: Notify server of offline status
+    await syncWithServer({
+        status: 'away',
+        activity: 'Agent Offline',
+        timestamp: Date.now()
+    });
+
+    process.exit(0);
+}
+
+// Signal handlers
+process.on('SIGINT', () => gracefulShutdown());
+process.on('SIGTERM', () => gracefulShutdown());
 
 program.parse(process.argv);

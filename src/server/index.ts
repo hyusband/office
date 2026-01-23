@@ -32,6 +32,18 @@ const start = async () => {
         reporterService.start();
 
         console.log(`\n🚀 Server ready at http://localhost:${port}`);
+
+        const shutdown = async () => {
+            fastify.log.info('Shutting down server...');
+            await fastify.close();
+            if (process.env.DISCORD_BOT_TOKEN) {
+                // Ensure bot service has a stop method if needed, or just let it exit
+            }
+            process.exit(0);
+        };
+
+        process.on('SIGINT', shutdown);
+        process.on('SIGTERM', shutdown);
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);
